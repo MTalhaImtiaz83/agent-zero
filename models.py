@@ -25,7 +25,10 @@ from python.helpers.dotenv import load_dotenv
 from python.helpers.providers import ModelType as ProviderModelType, get_provider_config
 from python.helpers.rate_limiter import RateLimiter
 from python.helpers.tokens import approximate_tokens
-from python.helpers import dirty_json, browser_use_monkeypatch
+try:
+    from python.helpers import browser_use_monkeypatch
+except ImportError:
+    browser_use_monkeypatch = None
 
 from langchain_core.language_models.chat_models import SimpleChatModel
 from langchain_core.outputs.chat_generation import ChatGenerationChunk
@@ -57,7 +60,8 @@ def turn_off_logging():
 # init
 load_dotenv()
 turn_off_logging()
-browser_use_monkeypatch.apply()
+if browser_use_monkeypatch:
+    browser_use_monkeypatch.apply()
 
 litellm.modify_params = True # helps fix anthropic tool calls by browser-use
 
@@ -580,7 +584,12 @@ class AsyncAIChatReplacement:
         self.chat = AsyncAIChatReplacement._Chat(wrapper)
 
 
-from browser_use.llm import ChatOllama, ChatOpenRouter, ChatGoogle, ChatAnthropic, ChatGroq, ChatOpenAI
+try:
+    from browser_use.llm import ChatOllama, ChatOpenRouter, ChatGoogle, ChatAnthropic, ChatGroq, ChatOpenAI
+    _BROWSER_USE_AVAILABLE = True
+except ImportError:
+    ChatOpenRouter = LiteLLMChatWrapper # Fallback
+    _BROWSER_USE_AVAILABLE = False
 
 class BrowserCompatibleChatWrapper(ChatOpenRouter):
     """

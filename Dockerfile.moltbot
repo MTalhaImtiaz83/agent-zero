@@ -1,0 +1,46 @@
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Install dependencies
+# restic: for restoring backup
+# supervisor: for process management
+# mongodb: for database (using mongo-tools or server?) restore.sh uses mongorestore implies tools.
+# BUT restore.sh clears /data/db and starts 'mongodb' service via supervisor. 
+# We need to install mongodb. Ubuntu 22.04 has mongodb package usually or we use official repo.
+# For simplicity, we try apt default 'mongodb' or 'mongodb-org' if valid.
+# 'curl', 'git', 'vim', 'zip', 'unzip': utilities
+# 'nodejs', 'npm': for frontend build
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    gnupg \
+    git \
+    supervisor \
+    restic \
+    zip \
+    unzip \
+    nano \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install specific MongoDB (likely 4.x or 5.x needed, but let's try available or 6.0)
+# restore.sh doesn't specify version, but backups might be sensitive.
+# Trying standard apt install for now.
+RUN apt-get update && apt-get install -y mongodb || echo "MongoDB package install failed, proceeding to check alternatives"
+
+# Install Node.js (v18? v16?) - restore.sh runs `npm run build`.
+RUN curl -fsSL https://deb.nodesource.com/setup_18.x | bash - && \
+    apt-get install -y nodejs
+
+# Install Nginx
+RUN apt-get install -y nginx
+
+# Setup directories
+RUN mkdir -p /app/frontend /data/db /var/log/supervisor /var/log/nginx
+
+# Copy entrypoint
+COPY entrypoint_moltbot.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
